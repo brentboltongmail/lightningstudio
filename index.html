@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightning Studio Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        body {
+            background-color: #020617;
+            background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #020617 80%);
+        }
+        .tool-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col items-center justify-center font-sans antialiased selection:bg-blue-500/30 p-6">
+    
+    <div class="max-w-3xl w-full flex flex-col items-center text-center mb-12">
+        <div class="w-20 h-20 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30">
+            <i class="fa-solid fa-bolt text-4xl"></i>
+        </div>
+        <h1 class="text-5xl font-bold tracking-tight text-white mb-4">Lightning<span class="text-blue-500">Studio</span></h1>
+        <p class="text-lg text-slate-400 max-w-xl">
+            A unified suite of web-based creative tools for 3D modeling and audio editing, running entirely in your browser.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+        <!-- 3D Editor Link -->
+        <a href="./3deditor/index.html" class="tool-card group bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer block no-underline">
+            <div class="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                <i class="fa-solid fa-cube text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-100 mb-2">3DEditor</h2>
+            <p class="text-sm text-slate-400">
+                Import, inspect, clip, and modify 3D .glb models with a true geometry-level CSG boolean engine.
+            </p>
+        </a>
+
+        <!-- Sound Editor Link -->
+        <a href="./soundeditor/index.html" class="tool-card group bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer block no-underline">
+            <div class="w-16 h-16 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+                <i class="fa-solid fa-music text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-100 mb-2">SoundEditor</h2>
+            <p class="text-sm text-slate-400">
+                A fully-featured audio editing suite to trim, mix, and apply effects to your sound files directly.
+            </p>
+        </a>
+    </div>
+
+    <footer class="mt-16 text-xs text-slate-600 font-medium tracking-wide">
+        PURE HTML &bull; JAVASCRIPT &bull; ZERO BACKEND
+    </footer>
+    
+</body>
+</html>
