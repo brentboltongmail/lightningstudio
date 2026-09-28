@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D GLB Editor & Clipper</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+  
+  <!-- Import Map for Three.js & Addons -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "three-bvh-csg": "https://unpkg.com/three-bvh-csg@0.0.16/build/index.module.js"
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
+
+  <!-- TOP HEADER -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0 z-30">
+    <!-- Left: Brand & File status -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 text-blue-500 font-bold text-lg">
+        <i class="fa-solid fa-cube text-xl"></i>
+        <span class="tracking-tight text-white font-semibold">GLB<span class="text-blue-500">Studio</span></span>
+      </div>
+      <div class="h-5 w-[1px] bg-slate-700"></div>
+      
+      <!-- Current Model Tag -->
+      <div id="file-info-badge" class="text-xs bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1 flex items-center gap-2 text-slate-300">
+        <i class="fa-solid fa-file-lines text-slate-400"></i>
+        <span id="model-filename" class="font-mono max-w-[180px] truncate">No model loaded</span>
+      </div>
+    </div>
+
+    <!-- Center: Main Actions -->
+    <div class="flex items-center gap-2">
+      <!-- File input (hidden) -->
+      <input type="file" id="file-input" accept=".glb,.gltf" class="hidden" />
+      
+      <button id="btn-import" class="glass-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-slate-200 hover:text-white">
+        <i class="fa-solid fa-folder-open text-blue-400"></i>
+        <span>Open GLB</span>
+      </button>
+
+      <button id="btn-load-sample" class="glass-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-slate-200 hover:text-white" title="Load a built-in demo model to test clipping">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+        <span>Sample Model</span>
+      </button>
+
+      <div class="h-5 w-[1px] bg-slate-700 mx-1"></div>
+
+      <button id="btn-undo" disabled class="glass-btn px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-slate-400 disabled:opacity-40 disabled:pointer-events-none" title="Undo last cut/clip (Ctrl+Z)">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>Undo</span>
+      </button>
+
+      <button id="btn-reset-model" disabled class="glass-btn px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-slate-400 hover:text-rose-400 disabled:opacity-40 disabled:pointer-events-none" title="Reset to original loaded model">
+        <i class="fa-solid fa-arrow-rotate-right"></i>
+        <span>Reset</span>
+      </button>
+    </div>
+
+    <!-- Right: Export Button -->
+    <div class="flex items-center gap-3">
+      <button id="btn-export-glb" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all">
+        <i class="fa-solid fa-download"></i>
+        <span>Export as GLB</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT SIDEBAR: OUTLINER & HIERARCHY -->
+    <aside id="left-sidebar" class="w-64 border-r border-slate-800 bg-slate-900/60 backdrop-blur flex flex-col shrink-0 z-20 transition-all duration-200">
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-layer-group"></i> Scene Outliner
+        </span>
+        <span id="node-count" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">0 meshes</span>
+      </div>
+
+      <!-- Hierarchy Tree View -->
+      <div id="tree-container" class="flex-1 overflow-y-auto p-2 space-y-0.5 text-xs text-slate-300">
+        <div class="text-center py-12 text-slate-500 text-xs">
+          <i class="fa-solid fa-cubes block text-2xl mb-2 opacity-50"></i>
+          Import a GLB file to inspect and isolate parts
+        </div>
+      </div>
+
+      <!-- Selected Mesh Info & Quick Actions -->
+      <div id="selected-mesh-panel" class="p-3 border-t border-slate-800 bg-slate-950/40 hidden">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-semibold text-blue-400 uppercase tracking-wide truncate max-w-[130px]" id="selected-part-name">Selected Part</span>
+          <div class="flex items-center gap-1">
+            <button id="btn-toggle-part-vis" class="p-1 text-slate-400 hover:text-white text-xs rounded hover:bg-slate-800" title="Toggle visibility">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button id="btn-isolate-part" class="p-1 text-slate-400 hover:text-amber-400 text-xs rounded hover:bg-slate-800" title="Isolate this part (hide all others)">
+              <i class="fa-solid fa-bullseye"></i>
+            </button>
+            <button id="btn-delete-part" class="p-1 text-slate-400 hover:text-rose-400 text-xs rounded hover:bg-slate-800" title="Delete this part">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+        <div class="text-[10px] text-slate-400 space-y-0.5 font-mono">
+          <div class="flex justify-between"><span>Triangles:</span> <span id="part-tri-count" class="text-slate-200">0</span></div>
+          <div class="flex justify-between"><span>Material:</span> <span id="part-mat-name" class="text-slate-200 truncate max-w-[100px]">-</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER: 3D VIEWPORT -->
+    <main id="viewport-container" class="flex-1 relative overflow-hidden">
+      <canvas id="canvas3d"></canvas>
+
+      <!-- Viewport Floating Top Toolbar: Tool Modes -->
+      <div class="floating-toolbar top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/80 backdrop-blur border border-slate-700/80 p-1 rounded-xl shadow-2xl">
+        <button id="tool-select" class="tool-tab active px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 bg-blue-600 text-white transition-all">
+          <i class="fa-solid fa-arrow-pointer"></i>
+          <span>Select</span>
+        </button>
+        <button id="tool-box-crop" class="tool-tab px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+          <i class="fa-solid fa-vector-square"></i>
+          <span>Box Clip</span>
+        </button>
+        <button id="tool-plane-slice" class="tool-tab px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+          <i class="fa-solid fa-scissors"></i>
+          <span>Plane Slice</span>
+        </button>
+      </div>
+
+      <!-- Viewport Floating Top-Left: Camera Controls -->
+      <div class="floating-toolbar top-3 left-3 flex flex-col gap-1.5">
+        <div class="bg-slate-900/80 backdrop-blur border border-slate-700/80 p-1 rounded-xl flex items-center gap-1 shadow-lg">
+          <div class="tooltip-container">
+            <button id="cam-view-iso" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg" title="Isometric View">
+              <i class="fa-solid fa-cube"></i>
+            </button>
+            <span class="tooltip-text">Isometric</span>
+          </div>
+          <div class="tooltip-container">
+            <button id="cam-view-front" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg font-mono text-[10px] font-bold">
+              FRONT
+            </button>
+            <span class="tooltip-text">Front View</span>
+          </div>
+          <div class="tooltip-container">
+            <button id="cam-view-top" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg font-mono text-[10px] font-bold">
+              TOP
+            </button>
+            <span class="tooltip-text">Top View</span>
+          </div>
+          <div class="tooltip-container">
+            <button id="cam-view-right" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg font-mono text-[10px] font-bold">
+              RIGHT
+            </button>
+            <span class="tooltip-text">Right View</span>
+          </div>
+          <div class="h-4 w-[1px] bg-slate-700 mx-0.5"></div>
+          <div class="tooltip-container">
+            <button id="cam-zoom-in" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg" title="Zoom In">
+              <i class="fa-solid fa-magnifying-glass-plus"></i>
+            </button>
+            <span class="tooltip-text">Zoom In</span>
+          </div>
+          <div class="tooltip-container">
+            <button id="cam-zoom-out" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg" title="Zoom Out">
+              <i class="fa-solid fa-magnifying-glass-minus"></i>
+            </button>
+            <span class="tooltip-text">Zoom Out</span>
+          </div>
+          <div class="tooltip-container">
+            <button id="cam-focus" class="p-1.5 text-xs text-slate-300 hover:text-blue-400 hover:bg-slate-800 rounded-lg" title="Center & Focus Model (F)">
+              <i class="fa-solid fa-crosshairs"></i>
+            </button>
+            <span class="tooltip-text">Focus (F)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewport Floating Top-Right: View / Display Modes -->
+      <div class="floating-toolbar top-3 right-3 flex items-center gap-1 bg-slate-900/80 backdrop-blur border border-slate-700/80 p-1 rounded-xl shadow-lg">
+        <div class="tooltip-container">
+          <button id="view-mode-shaded" class="p-1.5 text-xs bg-blue-600 text-white rounded-lg" title="PBR Shaded View">
+            <i class="fa-solid fa-palette"></i>
+          </button>
+          <span class="tooltip-text">Material Shaded</span>
+        </div>
+        <div class="tooltip-container">
+          <button id="view-mode-wireframe" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg" title="Toggle Wireframe Overlay">
+            <i class="fa-solid fa-border-all"></i>
+          </button>
+          <span class="tooltip-text">Wireframe</span>
+        </div>
+        <div class="tooltip-container">
+          <button id="view-mode-xray" class="p-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg" title="Toggle X-Ray / Transparent View">
+            <i class="fa-solid fa-ghost"></i>
+          </button>
+          <span class="tooltip-text">X-Ray Mode</span>
+        </div>
+        <div class="h-4 w-[1px] bg-slate-700 mx-0.5"></div>
+        <div class="tooltip-container">
+          <button id="toggle-grid" class="p-1.5 text-xs text-blue-400 bg-slate-800/80 rounded-lg" title="Toggle Ground Grid">
+            <i class="fa-solid fa-table-cells"></i>
+          </button>
+          <span class="tooltip-text">Toggle Grid</span>
+        </div>
+      </div>
+
+      <!-- Viewport Bottom Instructions / Hints -->
+      <div class="floating-toolbar bottom-3 left-1/2 -translate-x-1/2 bg-slate-900/70 backdrop-blur border border-slate-800/80 px-3.5 py-1.5 rounded-full text-[11px] text-slate-400 flex items-center gap-3 shadow-lg pointer-events-none">
+        <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">Left Drag</kbd> Rotate</span>
+        <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">Right Drag</kbd> Pan</span>
+        <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">Scroll</kbd> Smooth Zoom</span>
+        <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">Shift+Scroll</kbd> Micro-Zoom</span>
+        <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">Click Mesh</kbd> Select</span>
+      </div>
+
+      <!-- Drag and Drop Overlay -->
+      <div id="drop-overlay" class="absolute inset-0 bg-blue-950/80 backdrop-blur-sm border-4 border-dashed border-blue-500 rounded-lg z-50 flex flex-col items-center justify-center hidden pointer-events-none">
+        <i class="fa-solid fa-cloud-arrow-up text-5xl text-blue-400 mb-3 animate-bounce"></i>
+        <p class="text-xl font-bold text-white">Drop GLB or glTF file here</p>
+        <p class="text-sm text-blue-200 mt-1">Embedded textures & materials will load automatically</p>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div id="loading-overlay" class="absolute inset-0 bg-slate-950/70 backdrop-blur-md z-40 flex flex-col items-center justify-center hidden">
+        <div class="relative">
+          <div class="w-12 h-12 rounded-full border-4 border-slate-700 border-t-blue-500 animate-spin"></div>
+        </div>
+        <p id="loading-text" class="text-sm font-medium text-slate-200 mt-4">Processing 3D Geometry...</p>
+        <p id="loading-subtext" class="text-xs text-slate-400 mt-1">Clipping polygons and updating buffers</p>
+      </div>
+    </main>
+
+    <!-- RIGHT SIDEBAR: CLIPPING TOOLS & STATS -->
+    <aside id="right-sidebar" class="w-80 border-l border-slate-800 bg-slate-900/70 backdrop-blur flex flex-col shrink-0 z-20">
+      
+      <!-- Panel Tabs -->
+      <div class="flex border-b border-slate-800 bg-slate-950/40 p-1">
+        <button id="tab-btn-clip" class="flex-1 py-1.5 px-2 text-xs font-semibold text-blue-400 bg-slate-800/80 rounded-md transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-crop-simple"></i>
+          <span>Clipping Tools</span>
+        </button>
+        <button id="tab-btn-stats" class="flex-1 py-1.5 px-2 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-md transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Model Stats</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: CLIPPING TOOLS CONTENT -->
+      <div id="tab-content-clip" class="flex-1 overflow-y-auto p-4 space-y-5">
+        
+        <!-- SECTION: BOX CLIPPER CONTROLS -->
+        <div id="panel-box-controls" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-vector-square text-blue-400"></i> 3D Box Clipper
+            </h3>
+            <span class="text-[10px] text-blue-400 bg-blue-950 border border-blue-800/50 px-2 py-0.5 rounded-full font-semibold">Active</span>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Drag the 3D handles in viewport or adjust the sliders below to define the crop boundary.
+          </p>
+
+          <!-- Interactive Mode Toggle: Crop vs Carve -->
+          <div class="grid grid-cols-2 gap-2 bg-slate-950/60 p-1 rounded-lg border border-slate-800">
+            <button id="btn-mode-crop" class="py-1.5 px-2 rounded-md text-xs font-medium bg-blue-600 text-white flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-compress"></i> Keep Inside
+            </button>
+            <button id="btn-mode-carve" class="py-1.5 px-2 rounded-md text-xs font-medium text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-expand"></i> Cut Away
+            </button>
+          </div>
+
+          <!-- Box Dimensions Sliders -->
+          <div class="space-y-3 bg-slate-950/40 p-3 rounded-lg border border-slate-800">
+            <div class="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+              <span>Box Boundaries</span>
+              <button id="btn-fit-box" class="text-[10px] text-blue-400 hover:text-blue-300 underline font-normal">Fit to Model</button>
+            </div>
+
+            <!-- X Range -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>X Axis (Width)</span>
+                <span id="box-val-x">100%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="range" id="box-range-min-x" min="0" max="50" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+                <input type="range" id="box-range-max-x" min="50" max="100" value="100" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Y Range -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Y Axis (Height)</span>
+                <span id="box-val-y">100%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="range" id="box-range-min-y" min="0" max="50" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+                <input type="range" id="box-range-max-y" min="50" max="100" value="100" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Z Range -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Z Axis (Depth)</span>
+                <span id="box-val-z">100%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="range" id="box-range-min-z" min="0" max="50" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+                <input type="range" id="box-range-max-z" min="50" max="100" value="100" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Gizmo Transform Handle Mode -->
+            <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400">
+              <span>3D Gizmo Tool:</span>
+              <div class="flex items-center gap-1">
+                <button id="gizmo-mode-translate" class="p-1 px-2 text-[10px] bg-blue-600 text-white rounded font-mono font-medium">Move</button>
+                <button id="gizmo-mode-scale" class="p-1 px-2 text-[10px] bg-slate-800 text-slate-300 hover:text-white rounded font-mono font-medium">Scale</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Apply Box Clip Button -->
+          <button id="btn-apply-box-clip" disabled class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all">
+            <i class="fa-solid fa-scissors"></i>
+            <span>Apply Box Cut to Geometry</span>
+          </button>
+        </div>
+
+        <!-- SECTION: PLANE SLICER CONTROLS -->
+        <div id="panel-plane-controls" class="space-y-4 hidden">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-scissors text-amber-400"></i> Plane Slicer
+            </h3>
+            <span class="text-[10px] text-amber-400 bg-amber-950 border border-amber-800/50 px-2 py-0.5 rounded-full font-semibold">Active</span>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Position a cutting plane across your model and slice away either side with preserved UVs & textures.
+          </p>
+
+          <!-- Plane Normal / Axis Selection -->
+          <div class="space-y-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800">
+            <span class="text-[11px] font-semibold text-slate-300 block">Slice Axis</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="plane-axis-x" class="py-1 px-2 text-xs font-semibold rounded bg-slate-800 text-slate-300 hover:bg-slate-700">X (Left/Right)</button>
+              <button id="plane-axis-y" class="py-1 px-2 text-xs font-semibold rounded bg-blue-600 text-white">Y (Top/Bottom)</button>
+              <button id="plane-axis-z" class="py-1 px-2 text-xs font-semibold rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Z (Front/Back)</button>
+            </div>
+
+            <!-- Plane Position Offset Slider -->
+            <div class="pt-2 space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Plane Offset Position</span>
+                <span id="plane-pos-val">0.0</span>
+              </div>
+              <input type="range" id="plane-pos-slider" min="-100" max="100" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+            </div>
+
+            <!-- Flip Side Toggle -->
+            <div class="pt-1 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400">Cut Direction:</span>
+              <button id="btn-flip-plane" class="glass-btn px-2 py-1 text-[11px] rounded text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-arrows-rotate text-blue-400"></i>
+                <span id="plane-direction-label">Keep Upper Side</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Apply Plane Slice Button -->
+          <button id="btn-apply-plane-slice" disabled class="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 transition-all">
+            <i class="fa-solid fa-scissors"></i>
+            <span>Apply Plane Slice</span>
+          </button>
+        </div>
+
+        <!-- SECTION: QUICK TIPS -->
+        <div class="glass-card p-3 rounded-lg text-[11px] text-slate-400 space-y-2 border border-slate-800/80">
+          <div class="font-semibold text-slate-300 flex items-center gap-1.5 text-xs">
+            <i class="fa-solid fa-circle-info text-blue-400"></i> How Clipping Works
+          </div>
+          <p class="leading-relaxed">
+            Unlike simple visual clipping, this tool executes <strong>real geometry-level slicing</strong>. All UVs, materials, and textures are retained so the exported GLB is physically trimmed.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: MODEL STATS CONTENT -->
+      <div id="tab-content-stats" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-nodes text-blue-400"></i> Geometry & Mesh Metrics
+        </h3>
+
+        <!-- Metric Cards Grid -->
+        <div class="grid grid-cols-2 gap-2 font-mono">
+          <div class="glass-card p-2.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block uppercase">Triangles</span>
+            <span id="stat-triangles" class="text-base font-bold text-blue-400">0</span>
+          </div>
+          <div class="glass-card p-2.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block uppercase">Vertices</span>
+            <span id="stat-vertices" class="text-base font-bold text-slate-200">0</span>
+          </div>
+          <div class="glass-card p-2.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block uppercase">Meshes</span>
+            <span id="stat-meshes" class="text-base font-bold text-slate-200">0</span>
+          </div>
+          <div class="glass-card p-2.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block uppercase">Materials</span>
+            <span id="stat-materials" class="text-base font-bold text-slate-200">0</span>
+          </div>
+        </div>
+
+        <!-- Bounding Box Dimensions -->
+        <div class="glass-card p-3 rounded-lg space-y-2 font-mono text-xs">
+          <span class="text-[10px] text-slate-400 uppercase font-sans font-semibold block">Model Dimensions (Bounding Size)</span>
+          <div class="flex justify-between text-slate-300">
+            <span>Width (X):</span>
+            <span id="stat-size-x" class="text-blue-400 font-bold">0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-300">
+            <span>Height (Y):</span>
+            <span id="stat-size-y" class="text-blue-400 font-bold">0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-300">
+            <span>Depth (Z):</span>
+            <span id="stat-size-z" class="text-blue-400 font-bold">0.00</span>
+          </div>
+        </div>
+
+        <!-- Material Details -->
+        <div class="glass-card p-3 rounded-lg space-y-2 text-xs">
+          <span class="text-[10px] text-slate-400 uppercase font-semibold block">Embedded Textures & Materials</span>
+          <div id="stat-materials-list" class="space-y-1 max-h-36 overflow-y-auto text-[11px] text-slate-300">
+            <p class="text-slate-500 italic">No materials loaded</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR FOOTER: EXPORT & OPTIMIZATION STATUS -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2.5">
+        <div class="space-y-1.5 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-[11px]">
+          <div class="flex items-center justify-between text-slate-300 font-semibold text-[10px] uppercase tracking-wider">
+            <span>Lossless Optimization</span>
+            <span class="text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-1.5 py-0.5 rounded font-mono text-[9px] font-bold">~65% Smaller</span>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white pt-0.5">
+            <input type="checkbox" id="opt-weld-vertices" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0 w-3.5 h-3.5" />
+            <span title="Deduplicates identical vertices and creates indexed buffers with zero quality loss">Weld & Index Vertices</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+            <input type="checkbox" id="opt-purge-unused" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0 w-3.5 h-3.5" />
+            <span title="Removes dangling unreferenced materials and empty nodes">Purge Unused Materials & Assets</span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] text-slate-400">
+          <span>Export Format:</span>
+          <span class="text-slate-200 font-mono font-semibold">Binary (.glb)</span>
+        </div>
+        <button id="btn-export-glb-sidebar" disabled class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-all">
+          <i class="fa-solid fa-file-export"></i>
+          <span>Save & Download GLB</span>
+        </button>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN ENTRY SCRIPT -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AudioStudio Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; }
+    canvas { background: #020617; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.05); width: 100%; }
+    input[type=range] { accent-color: #38bdf8; }
+    .trim-handle { width: 10px; background: rgba(56, 189, 248, 0.5); position: absolute; height: 100%; top: 0; cursor: ew-resize; z-index: 10; border-radius: 2px; }
+  </style>
+</head>
+<body class="p-6 h-screen flex flex-col gap-4">
+  <header class="flex justify-between items-center glass-panel p-4">
+    <h1 class="text-xl font-bold tracking-tight text-sky-400">AudioStudio</h1>
+    <div class="flex gap-2">
+      <input type="file" id="audio-upload" accept="audio/*" class="hidden">
+      <button onclick="document.getElementById('audio-upload').click()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">Load Audio</button>
+      <button id="btn-play" class="bg-sky-500 hover:bg-sky-400 px-4 py-2 rounded text-sm text-slate-900 font-bold transition">Play</button>
+      <button id="btn-stop" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">Stop</button>
+      <button id="btn-reset" class="bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded text-sm text-slate-900 font-bold transition">Reset</button>
+      <button id="btn-export" class="bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded text-sm text-slate-900 font-bold transition">Export</button>
+    </div>
+  </header>
+
+  <main class="flex-1 grid grid-cols-12 gap-4 min-h-0">
+    <!-- Left Column: Master Waveform & Trimming -->
+    <section class="col-span-8 flex flex-col gap-4">
+      <div class="glass-panel p-4 flex-1 flex flex-col relative">
+        <h2 class="text-sm font-semibold text-slate-300 mb-2">Master Waveform & Trimming</h2>
+        <div class="relative flex-1" id="waveform-container">
+          <canvas id="waveform-canvas" class="h-full"></canvas>
+          <div id="trim-start" class="trim-handle left-0 hover:bg-sky-400"></div>
+          <div id="trim-end" class="trim-handle right-0 hover:bg-sky-400"></div>
+          <div id="playhead" class="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none hidden"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-500 mt-2">
+          <span id="time-start">0.00s</span>
+          <span id="time-end">0.00s</span>
+        </div>
+      </div>
+      
+      <!-- Dynamics & Frequency Visualizations -->
+      <div class="glass-panel p-4 h-64 grid grid-cols-2 gap-4">
+        <div class="flex flex-col">
+          <h2 class="text-sm font-semibold text-slate-300 mb-2">Frequency Spectrum</h2>
+          <canvas id="freq-canvas" class="flex-1"></canvas>
+        </div>
+        <div class="flex flex-col">
+          <h2 class="text-sm font-semibold text-slate-300 mb-2">Dynamics / Envelope</h2>
+          <canvas id="dynamics-canvas" class="flex-1"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Tools & Parameters -->
+    <section class="col-span-4 flex flex-col gap-4 overflow-y-auto">
+      
+      <!-- Time / Speed -->
+      <div class="glass-panel p-4">
+        <h3 class="text-sm font-bold text-sky-400 mb-4 border-b border-slate-700 pb-2">Time & Speed</h3>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Playback Rate <span id="val-rate">1.0x</span></label>
+          <input type="range" id="ctrl-rate" min="0.5" max="2.0" step="0.05" value="1.0">
+          <label class="text-xs text-slate-400 flex items-center gap-2 mt-1">
+            <input type="checkbox" id="cb-keep-pitch" checked class="accent-sky-500">
+            Keep Pitch
+          </label>
+        </div>
+      </div>
+
+      <!-- Volume & Gain -->
+      <div class="glass-panel p-4">
+        <h3 class="text-sm font-bold text-sky-400 mb-4 border-b border-slate-700 pb-2">Volume & Gain</h3>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Master Volume <span id="val-vol">1.0</span></label>
+          <input type="range" id="ctrl-vol" min="0" max="2" step="0.05" value="1.0">
+        </div>
+      </div>
+
+      <!-- Frequency / EQ -->
+      <div class="glass-panel p-4 flex flex-col gap-4">
+        <h3 class="text-sm font-bold text-sky-400 mb-2 border-b border-slate-700 pb-2">Equalizer (EQ)</h3>
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Low (Shelf) <span id="val-eq-low">0 dB</span></label>
+          <input type="range" id="ctrl-eq-low" min="-15" max="15" step="1" value="0">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Mid (Peaking) <span id="val-eq-mid">0 dB</span></label>
+          <input type="range" id="ctrl-eq-mid" min="-15" max="15" step="1" value="0">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">High (Shelf) <span id="val-eq-high">0 dB</span></label>
+          <input type="range" id="ctrl-eq-high" min="-15" max="15" step="1" value="0">
+        </div>
+      </div>
+
+      <!-- Dynamics / Compressor -->
+      <div class="glass-panel p-4 flex flex-col gap-4">
+        <h3 class="text-sm font-bold text-sky-400 mb-2 border-b border-slate-700 pb-2">Dynamics Compressor</h3>
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Threshold <span id="val-comp-thresh">-24 dB</span></label>
+          <input type="range" id="ctrl-comp-thresh" min="-100" max="0" step="1" value="-24">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Ratio <span id="val-comp-ratio">12:1</span></label>
+          <input type="range" id="ctrl-comp-ratio" min="1" max="20" step="1" value="12">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Attack <span id="val-comp-attack">0.003 s</span></label>
+          <input type="range" id="ctrl-comp-attack" min="0" max="1" step="0.001" value="0.003">
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-xs text-slate-400 flex justify-between">Release <span id="val-comp-release">0.25 s</span></label>
+          <input type="range" id="ctrl-comp-release" min="0" max="1" step="0.01" value="0.25">
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
