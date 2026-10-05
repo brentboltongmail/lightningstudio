@@ -106,30 +106,64 @@ async function renderScreenImage(src) {
 // Initial check for current_screen.png
 renderScreenImage('current_screen.png?t=' + Date.now()).catch(() => {});
 
-// Live Screen Refresh Button
+// Auto Stream Loop State
+let isAutoStreaming = false;
+let autoStreamTimer = null;
+const autoStreamBtn = document.getElementById('autoStreamBtn');
+
+async function triggerSingleScreenCapture() {
+  try {
+    if (window.electronAPI && window.electronAPI.fetchLiveScreen) {
+      const res = await window.electronAPI.fetchLiveScreen();
+      if (res.success && res.base64) {
+        await renderScreenImage(res.base64);
+        return true;
+      }
+    }
+  } catch (e) {
+    // ignore dropped frames during auto-streaming
+  }
+  return false;
+}
+
+// Live Screen Refresh Button (Single Snapshot)
 if (refreshScreenBtn) {
-  refreshScreenBtn.innerText = '📷 Capture Live iPhone Screen';
   refreshScreenBtn.addEventListener('click', async () => {
     log('Fetching current screen from iPhone over USB...');
     refreshScreenBtn.disabled = true;
-    try {
-      if (window.electronAPI && window.electronAPI.fetchLiveScreen) {
-        const res = await window.electronAPI.fetchLiveScreen();
-        if (res.success && res.base64) {
-          await renderScreenImage(res.base64);
-          log('Live iPhone screen updated successfully!', 'success');
-        } else {
-          log('Screen capture response: ' + (res.error || 'fallback loaded'), 'error');
-          await renderScreenImage('current_screen.png?t=' + Date.now());
+    const ok = await triggerSingleScreenCapture();
+    if (ok) {
+      log('Live iPhone screen updated successfully!', 'success');
+    } else {
+      await renderScreenImage('current_screen.png?t=' + Date.now());
+      log('Refreshed latest available frame.', 'info');
+    }
+    refreshScreenBtn.disabled = false;
+  });
+}
+
+// Continuous Auto-Stream Toggle
+if (autoStreamBtn) {
+  autoStreamBtn.addEventListener('click', async () => {
+    isAutoStreaming = !isAutoStreaming;
+    if (isAutoStreaming) {
+      autoStreamBtn.innerText = '⏸ Auto Stream: ON';
+      autoStreamBtn.className = 'btn play';
+      log('Continuous live screen stream started.', 'success');
+
+      const streamLoop = async () => {
+        if (!isAutoStreaming) return;
+        await triggerSingleScreenCapture();
+        if (isAutoStreaming) {
+          autoStreamTimer = setTimeout(streamLoop, 150); // ~6-7 FPS continuous
         }
-      } else {
-        await renderScreenImage('current_screen.png?t=' + Date.now());
-        log('Screen refreshed from USB storage.', 'success');
-      }
-    } catch (e) {
-      log('Failed to capture screen: ' + e.message, 'error');
-    } finally {
-      refreshScreenBtn.disabled = false;
+      };
+      streamLoop();
+    } else {
+      clearTimeout(autoStreamTimer);
+      autoStreamBtn.innerText = '▶ Auto Stream: OFF';
+      autoStreamBtn.className = 'btn primary';
+      log('Continuous live screen stream stopped.');
     }
   });
 }
