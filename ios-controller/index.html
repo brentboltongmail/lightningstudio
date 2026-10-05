@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iOS Screen & Macro Controller</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left: Virtual Phone Display Canvas -->
+    <div class="viewport-panel">
+      <div class="device-frame">
+        <div class="device-speaker"></div>
+        <div class="screen-container" id="screenWrapper">
+          <canvas id="screenCanvas" width="393" height="852"></canvas>
+          <div id="touchRipple" class="touch-ripple"></div>
+          <div id="swipeIndicator" class="swipe-indicator"></div>
+          <div class="overlay-info">
+            <span id="coordDisplay">X: 0, Y: 0</span>
+            <span id="statusBadge" class="badge disconnected">Disconnected</span>
+          </div>
+        </div>
+        <div class="home-bar"></div>
+      </div>
+      <div class="screen-controls">
+        <label>Resolution Presets:</label>
+        <select id="devicePreset">
+          <option value="393x852" selected>iPhone 14/15/16 Pro (393 × 852)</option>
+          <option value="430x932">iPhone 14/15/16 Pro Max (430 × 932)</option>
+          <option value="390x844">iPhone 12/13/14 (390 × 844)</option>
+          <option value="375x667">iPhone SE / 8 (375 × 667)</option>
+        </select>
+        <button id="refreshScreenBtn" class="btn secondary">Simulate Screen Refresh</button>
+      </div>
+    </div>
+
+    <!-- Right: Macro Recording & Controls -->
+    <div class="sidebar-panel">
+      <header class="panel-header">
+        <h2>iOS Controller & Macros</h2>
+        <div class="connection-bar">
+          <input type="text" id="wdaUrlInput" value="http://127.0.0.1:8100" placeholder="WDA URL" />
+          <button id="connectBtn" class="btn primary">Connect</button>
+        </div>
+      </header>
+
+      <!-- Recording Controls -->
+      <section class="control-card">
+        <h3>Macro Recorder</h3>
+        <div class="btn-group">
+          <button id="recordBtn" class="btn record">🔴 Record</button>
+          <button id="stopBtn" class="btn stop" disabled>⏹ Stop</button>
+          <button id="playBtn" class="btn play" disabled>▶ Play</button>
+          <button id="clearBtn" class="btn secondary">Clear</button>
+        </div>
+        
+        <div class="loop-settings">
+          <label>
+            Repeat Loops:
+            <input type="number" id="loopCount" value="1" min="1" max="999" />
+          </label>
+          <label>
+            Delay Between Loops (ms):
+            <input type="number" id="loopDelay" value="500" min="0" step="100" />
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="infiniteLoop" />
+            Infinite Loop
+          </label>
+        </div>
+      </section>
+
+      <!-- Macro Step List -->
+      <section class="macro-list-container">
+        <div class="list-header">
+          <h3>Recorded Actions (<span id="stepCount">0</span>)</h3>
+          <div class="list-actions">
+            <button id="exportBtn" class="btn small">Export JSON</button>
+            <button id="importBtn" class="btn small">Import JSON</button>
+            <input type="file" id="fileInput" accept=".json" style="display: none;" />
+          </div>
+        </div>
+        <div id="stepList" class="step-list">
+          <div class="empty-state">No steps recorded yet. Click "Record" and tap/swipe on the phone screen.</div>
+        </div>
+      </section>
+
+      <!-- Execution Log -->
+      <section class="log-panel">
+        <h4>Live Log</h4>
+        <div id="logOutput" class="log-output"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
