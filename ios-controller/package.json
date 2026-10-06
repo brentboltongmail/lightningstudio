@@ -1,12 +1,17 @@
 {
   "name": "ios-controller",
   "version": "1.0.0",
-  "description": "",
+  "description": "Mirror an iPhone over USB and automate taps/swipes with macros (Electron + WebDriverAgent).",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "check-setup": "bash scripts/check-setup.sh",
+    "tunnel": "bash scripts/start-tunnel.sh",
+    "forward-wda": "bash scripts/forward-wda.sh",
+    "deploy-wda": "bash scripts/deploy-wda.sh",
+    "run:mac": "bash scripts/run.sh"
   },
-  "keywords": [],
+  "keywords": ["ios", "webdriveragent", "electron", "macros"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

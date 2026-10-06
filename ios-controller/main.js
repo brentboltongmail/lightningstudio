@@ -1,12 +1,29 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const axios = require('axios');
+const { execFileSync, exec } = require('child_process');
+const fs = require('fs');
 
 let mainWindow;
 
 // Default WDA (WebDriverAgent) endpoint when connected via USB (usbmuxd port forward)
 let wdaBaseUrl = 'http://127.0.0.1:8100';
 let sessionId = null;
+
+/** Prefer python3 on macOS/Linux; fall back to python (Windows / py launcher). */
+function resolvePython() {
+  for (const candidate of ['python3', 'python']) {
+    try {
+      execFileSync(candidate, ['--version'], { stdio: 'ignore' });
+      return candidate;
+    } catch (_) {
+      /* try next */
+    }
+  }
+  return 'python3';
+}
+
+const pythonBin = resolvePython();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -138,12 +155,11 @@ ipcMain.handle('send-swipe', async (event, { fromX, fromY, toX, toY, duration })
 
 // 5. Fetch live screen snapshot from iPhone over USB DVT
 ipcMain.handle('fetch-live-screen', async () => {
-  const { exec } = require('child_process');
-  const fs = require('fs');
   const screenFile = path.join(__dirname, 'current_screen.png');
+  const cmd = `${pythonBin} -m pymobiledevice3 developer dvt screenshot current_screen.png`;
 
   return new Promise((resolve) => {
-    exec('python -m pymobiledevice3 developer dvt screenshot current_screen.png', { cwd: __dirname, timeout: 8000 }, (err) => {
+    exec(cmd, { cwd: __dirname, timeout: 8000 }, (err) => {
       if (err && !fs.existsSync(screenFile)) {
         return resolve({ success: false, error: err.message });
       }

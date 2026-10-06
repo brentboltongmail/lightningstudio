@@ -1,12 +1,18 @@
+import shutil
 import subprocess
 import asyncio
 from aiohttp import web
 
+
+def _python_bin():
+    """Prefer python3 (macOS/Homebrew); fall back to python."""
+    return shutil.which("python3") or shutil.which("python") or "python3"
+
+
 async def handle_screen(request):
     try:
         # Run CLI screenshot command using the active connection
-        loop = asyncio.get_running_loop()
-        cmd = ["python", "-m", "pymobiledevice3", "developer", "dvt", "screenshot", "temp_screen.png"]
+        cmd = [_python_bin(), "-m", "pymobiledevice3", "developer", "dvt", "screenshot", "temp_screen.png"]
         proc = await asyncio.create_subprocess_exec(*cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         await proc.communicate()
 
