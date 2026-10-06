@@ -80,13 +80,23 @@ async function getSession() {
   }
 }
 
-// 3. Send Single Tap via Bluetooth Mouse & WDA fallback
-ipcMain.handle('send-tap', async (event, { x, y }) => {
-  console.log(`[IPC] Tap requested at (${x}, ${y})`);
+// 3. Send Movement via Bluetooth Mouse
+ipcMain.handle('send-move', async (event, { dx, dy }) => {
+  try {
+    await axios.post('http://127.0.0.1:8200/move', { dx, dy }, { timeout: 1500 });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 4. Send Single Tap via Bluetooth Mouse & WDA fallback
+ipcMain.handle('send-tap', async (event, { x, y, width, height }) => {
+  console.log(`[IPC] Tap requested at (${x}, ${y}) with screen ${width}x${height}`);
 
   // First priority: Bluetooth AssistiveTouch Mouse click
   try {
-    await axios.post('http://127.0.0.1:8200/click', { buttons: 1, dx: 0, dy: 0 }, { timeout: 1500 });
+    await axios.post('http://127.0.0.1:8200/click', { buttons: 1 }, { timeout: 1500 });
     return { success: true, method: 'bluetooth_mouse' };
   } catch (btErr) {
     // Fallback: WDA if running

@@ -22,6 +22,18 @@ const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const fileInput = document.getElementById('fileInput');
 
+// Multiplier Elements
+const mouseMultiplierInput = document.getElementById('mouseMultiplier');
+const multiplierValDisplay = document.getElementById('multiplierVal');
+
+let trackingMultiplier = 1.0;
+if (mouseMultiplierInput) {
+  mouseMultiplierInput.addEventListener('input', (e) => {
+    trackingMultiplier = parseFloat(e.target.value);
+    multiplierValDisplay.innerText = trackingMultiplier.toFixed(1);
+  });
+}
+
 // Fallback mock if running in a regular web browser instead of Electron
 if (!window.electronAPI) {
   window.electronAPI = {
@@ -215,6 +227,43 @@ canvas.addEventListener('mousemove', (e) => {
   coordDisplay.innerText = `X: ${x}, Y: ${y}`;
 });
 
+// --- Slam-To-Zero Cursor Positioning ---
+async function executeTapWithSlam(targetX, targetY) {
+  // 1. Slam to top-left corner (0,0) by sending large negative movements multiple times.
+  // Because movement is capped at -127 per packet, we send it a few times to guarantee we hit the corner
+  // regardless of screen size or tracking speed.
+  for (let i = 0; i < 20; i++) {
+    await window.electronAPI.sendMove({ dx: -127, dy: -127 });
+  }
+
+  // Brief pause to allow the OS to process the fast movements
+  await new Promise(r => setTimeout(r, 50));
+
+  // 2. Calculate the total relative distance to move based on the multiplier
+  const totalDx = Math.round(targetX * trackingMultiplier);
+  const totalDy = Math.round(targetY * trackingMultiplier);
+
+  // 3. Move to the target coordinate in chunks of 127
+  let currentX = 0;
+  let currentY = 0;
+
+  while (currentX < totalDx || currentY < totalDy) {
+    const moveX = Math.min(127, totalDx - currentX);
+    const moveY = Math.min(127, totalDy - currentY);
+    
+    await window.electronAPI.sendMove({ dx: moveX, dy: moveY });
+    
+    currentX += moveX;
+    currentY += moveY;
+  }
+
+  // Brief pause to let cursor settle
+  await new Promise(r => setTimeout(r, 50));
+
+  // 4. Send the Tap (Click)
+  await window.electronAPI.sendTap({ x: targetX, y: targetY, width: canvas.width, height: canvas.height });
+}
+
 // Canvas Interaction: Mouse Down
 canvas.addEventListener('mousedown', (e) => {
   if (isPlaying) return;
@@ -245,6 +294,8 @@ canvas.addEventListener('mouseup', async (e) => {
       fromY: dragStartCoords.y,
       toX: endCoords.x,
       toY: endCoords.y,
+      width: canvas.width,
+      height: canvas.height,
       duration: 0.35,
       delayMs: delay
     };
@@ -261,6 +312,8 @@ canvas.addEventListener('mouseup', async (e) => {
       action: 'tap',
       x: dragStartCoords.x,
       y: dragStartCoords.y,
+      width: canvas.width,
+      height: canvas.height,
       delayMs: delay
     };
 
@@ -270,7 +323,7 @@ canvas.addEventListener('mouseup', async (e) => {
     }
 
     log(`Tap at (${tapAction.x}, ${tapAction.y})`);
-    await window.electronAPI.sendTap(tapAction);
+    await executeTapWithSlam(tapAction.x, tapAction.y);
   }
 });
 
@@ -414,7 +467,7 @@ playBtn.addEventListener('click', async () => {
         const rx = (step.x / canvas.width) * rect.width;
         const ry = (step.y / canvas.height) * rect.height;
         triggerRipple(rx, ry);
-        await window.electronAPI.sendTap(step);
+        await executeTapWithSlam(step.x, step.y);
       } else if (step.action === 'swipe') {
         await window.electronAPI.sendSwipe(step);
       }
