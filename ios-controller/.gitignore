@@ -6,3 +6,5 @@ temp_screen.png
 current_screen.png
 *.ipa
 .DS_Store
+__pycache__/
+*.pyc
