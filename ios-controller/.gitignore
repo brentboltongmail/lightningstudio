@@ -4,6 +4,7 @@ dist/
 WebDriverAgent/
 temp_screen.png
 current_screen.png
+.ios-controller.json
 *.ipa
 .DS_Store
 __pycache__/
