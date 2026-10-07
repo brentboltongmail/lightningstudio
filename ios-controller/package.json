@@ -1,17 +1,90 @@
 {
   "name": "ios-controller",
+  "productName": "iOS Controller",
   "version": "1.0.0",
-  "description": "",
+  "description": "Mirror an iPhone over USB and automate taps/swipes with macros (Electron + WebDriverAgent).",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "check-setup": "bash scripts/check-setup.sh",
+    "tunnel": "bash scripts/start-tunnel.sh",
+    "forward-wda": "bash scripts/forward-wda.sh",
+    "deploy-wda": "bash scripts/deploy-wda.sh",
+    "run:mac": "bash scripts/run.sh",
+    "pack": "electron-builder --mac dir",
+    "dist": "electron-builder --mac dir",
+    "install:app": "bash scripts/install-app.sh"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "ios",
+    "webdriveragent",
+    "electron",
+    "macros"
+  ],
+  "author": "Lightning Studio",
   "license": "ISC",
   "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.20.0"
+  },
   "devDependencies": {
-    "axios": "^1.20.0",
-    "electron": "^44.5.1"
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.lightningstudio.ioscontroller",
+    "productName": "iOS Controller",
+    "copyright": "Copyright © Lightning Studio",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "bootstrap.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      ".ios-controller.json",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "WebDriverAgent",
+        "to": "WebDriverAgent",
+        "filter": [
+          "**/*",
+          "!**/node_modules/**",
+          "!**/.git/**"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ]
   }
 }

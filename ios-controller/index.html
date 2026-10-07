@@ -8,96 +8,98 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Left: Virtual Phone Display Canvas -->
+    <!-- Left: phone only -->
     <div class="viewport-panel">
       <div class="device-frame">
         <div class="device-speaker"></div>
         <div class="screen-container" id="screenWrapper">
-          <canvas id="screenCanvas" width="393" height="852"></canvas>
+          <img id="liveMjpeg" alt="" draggable="false" />
+          <canvas id="screenCanvas" width="440" height="956"></canvas>
           <div id="touchRipple" class="touch-ripple"></div>
           <div id="swipeIndicator" class="swipe-indicator"></div>
-          <div class="overlay-info">
-            <span id="coordDisplay">X: 0, Y: 0</span>
-            <span id="statusBadge" class="badge disconnected">Disconnected</span>
-          </div>
         </div>
         <div class="home-bar"></div>
       </div>
-      <div class="screen-controls">
-        <label>Resolution Presets:</label>
-        <select id="devicePreset">
-          <option value="393x852" selected>iPhone 14/15/16 Pro (393 × 852)</option>
-          <option value="430x932">iPhone 14/15/16 Pro Max (430 × 932)</option>
-          <option value="390x844">iPhone 12/13/14 (390 × 844)</option>
-          <option value="375x667">iPhone SE / 8 (375 × 667)</option>
-        </select>
-        <button id="refreshScreenBtn" class="btn secondary">📷 Snapshot</button>
-        <button id="autoStreamBtn" class="btn primary">▶ Auto Stream: OFF</button>
-      </div>
     </div>
 
-    <!-- Right: Macro Recording & Controls -->
-    <div class="sidebar-panel">
+    <!-- Right: connection, stream, macros -->
+    <aside class="sidebar-panel">
       <header class="panel-header">
-        <h2>iOS Controller & Macros</h2>
-        <div class="connection-bar">
-          <input type="text" id="wdaUrlInput" value="http://127.0.0.1:8100" placeholder="WDA URL" />
-          <button id="connectBtn" class="btn primary">Connect</button>
+        <div class="title-row">
+          <h1>iOS Controller</h1>
+          <span id="statusBadge" class="badge disconnected">Waiting</span>
         </div>
+        <p id="deviceInfo" class="device-info">Looking for an iPhone…</p>
+        <button id="linkBtn" class="btn secondary link-btn" type="button" hidden>Disconnect</button>
       </header>
 
-      <!-- Recording Controls -->
       <section class="control-card">
-        <h3>Macro Recorder</h3>
+        <div class="card-head">
+          <h2>Stream</h2>
+          <button id="autoStreamBtn" class="btn small">Stream: Off</button>
+        </div>
+        <div class="option-sliders">
+          <label for="streamQuality">JPEG quality <span id="streamQualityVal">5</span>%</label>
+          <input type="range" id="streamQuality" min="1" max="100" step="1" value="5" />
+          <label for="streamScale">Resolution scale <span id="streamScaleVal">20</span>%</label>
+          <input type="range" id="streamScale" min="10" max="100" step="5" value="20" />
+        </div>
+      </section>
+
+      <section class="control-card">
+        <h2>Tap merge</h2>
+        <div class="option-sliders">
+          <label for="tapMergeMs">Time window <span id="tapMergeMsVal">30</span> ms</label>
+          <input type="range" id="tapMergeMs" min="0" max="500" step="5" value="30" />
+          <label for="tapMergePx">Distance <span id="tapMergePxVal">5</span> pt</label>
+          <input type="range" id="tapMergePx" min="0" max="50" step="1" value="5" />
+        </div>
+        <p class="option-hint">Rapid taps inside both limits count as one. Set either to 0 to disable.</p>
+      </section>
+
+      <section class="control-card">
+        <h2>Macro Recorder</h2>
         <div class="btn-group">
-          <button id="recordBtn" class="btn record">🔴 Record</button>
-          <button id="stopBtn" class="btn stop" disabled>⏹ Stop</button>
-          <button id="playBtn" class="btn play" disabled>▶ Play</button>
+          <button id="recordBtn" class="btn record">Record</button>
+          <button id="stopBtn" class="btn stop" disabled>Stop</button>
+          <button id="playBtn" class="btn play" disabled>Play</button>
           <button id="clearBtn" class="btn secondary">Clear</button>
         </div>
-        
-        <div class="multiplier-setting" style="margin: 10px 0; background: #232326; padding: 10px; border-radius: 6px;">
-          <label for="mouseMultiplier" style="display: block; margin-bottom: 5px;">AssistiveTouch Multiplier: <span id="multiplierVal">1.0</span>x</label>
-          <input type="range" id="mouseMultiplier" min="0.1" max="5.0" step="0.1" value="1.0" style="width: 100%;">
-        </div>
-
         <div class="loop-settings">
           <label>
-            Repeat Loops:
+            Loops
             <input type="number" id="loopCount" value="1" min="1" max="999" />
           </label>
           <label>
-            Delay Between Loops (ms):
+            Loop delay (ms)
             <input type="number" id="loopDelay" value="500" min="0" step="100" />
           </label>
           <label class="checkbox-label">
             <input type="checkbox" id="infiniteLoop" />
-            Infinite Loop
+            Infinite
           </label>
         </div>
       </section>
 
-      <!-- Macro Step List -->
       <section class="macro-list-container">
         <div class="list-header">
-          <h3>Recorded Actions (<span id="stepCount">0</span>)</h3>
+          <h2>Actions <span class="count">(<span id="stepCount">0</span>)</span></h2>
           <div class="list-actions">
-            <button id="exportBtn" class="btn small">Export JSON</button>
-            <button id="importBtn" class="btn small">Import JSON</button>
-            <input type="file" id="fileInput" accept=".json" style="display: none;" />
+            <button id="exportBtn" class="btn small">Export</button>
+            <button id="importBtn" class="btn small">Import</button>
+            <input type="file" id="fileInput" accept=".json" hidden />
           </div>
         </div>
         <div id="stepList" class="step-list">
-          <div class="empty-state">No steps recorded yet. Click "Record" and tap/swipe on the phone screen.</div>
+          <div class="empty-state">No steps yet. Record, then tap or swipe on the phone.</div>
         </div>
       </section>
 
-      <!-- Execution Log -->
       <section class="log-panel">
-        <h4>Live Log</h4>
+        <h2>Log</h2>
         <div id="logOutput" class="log-output"></div>
       </section>
-    </div>
+    </aside>
   </div>
 
   <script src="renderer.js"></script>
