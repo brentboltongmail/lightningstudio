@@ -1,0 +1,3 @@
+pynput>=1.7.6
+pywebview>=4.0.0
+pyinstaller>=6.0.0

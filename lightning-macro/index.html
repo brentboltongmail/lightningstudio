@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lightning Macro</title>
+  <style>
+    :root {
+      --bg-color: #1e1e2e;
+      --card-bg: #2b2b3d;
+      --accent-color: #6c5ce7;
+      --accent-hover: #5a4bcf;
+      --danger-color: #ff7675;
+      --danger-hover: #d63031;
+      --success-color: #00b894;
+      --text-main: #f5f6fa;
+      --text-muted: #a4b0be;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      min-height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    header {
+      text-align: center;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #3d3d5c;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .perm-warning {
+      display: none;
+      background: rgba(235, 77, 75, 0.2);
+      border: 1px solid #eb4d4b;
+      color: #ff7675;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .perm-badges {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 6px 0;
+      font-size: 0.75rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .badge.granted {
+      background: rgba(0, 184, 148, 0.2);
+      color: var(--success-color);
+      border: 1px solid var(--success-color);
+    }
+
+    .badge.missing {
+      background: rgba(255, 118, 117, 0.2);
+      color: var(--danger-color);
+      border: 1px solid var(--danger-color);
+    }
+
+    .perm-warning button {
+      background: #eb4d4b;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-block;
+    }
+
+    .status-bar {
+      background-color: var(--card-bg);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 8px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .file-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .file-name {
+      color: #74b9ff;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--text-muted);
+    }
+
+    .dot.recording {
+      background-color: var(--danger-color);
+      box-shadow: 0 0 8px var(--danger-color);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .dot.playing {
+      background-color: var(--success-color);
+      box-shadow: 0 0 8px var(--success-color);
+    }
+
+    .dot.paused {
+      background-color: #f39c12;
+      box-shadow: 0 0 8px #f39c12;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-record {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    .btn-record:hover { background-color: var(--danger-hover); }
+
+    .btn-play {
+      background-color: var(--success-color);
+      color: white;
+    }
+    .btn-play:hover { background-color: #00997b; }
+
+    .btn-pause {
+      background-color: #e67e22;
+      color: white;
+    }
+    .btn-pause:hover { background-color: #d35400; }
+
+    .btn-stop {
+      background-color: #636e72;
+      color: white;
+    }
+    .btn-stop:hover { background-color: #2d3436; }
+
+    .btn-secondary {
+      background-color: var(--accent-color);
+      color: white;
+    }
+    .btn-secondary:hover { background-color: var(--accent-hover); }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .settings-panel {
+      background-color: var(--card-bg);
+      padding: 14px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .timing-panel {
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .timing-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .timing-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .timing-val {
+      color: #74b9ff;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .setting-item label {
+      color: var(--text-main);
+    }
+
+    input[type="number"], select {
+      background: #1e1e2e;
+      border: 1px solid #484869;
+      color: var(--text-main);
+      padding: 5px 8px;
+      border-radius: 6px;
+      width: 80px;
+      text-align: center;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .hotkey-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      background: rgba(0,0,0,0.2);
+      padding: 8px;
+      border-radius: 6px;
+      line-height: 1.4;
+    }
+
+    .event-count {
+      font-weight: bold;
+      color: var(--accent-color);
+    }
+
+    .save-status {
+      font-size: 0.75rem;
+      margin-left: 6px;
+      font-weight: 500;
+    }
+    .save-status.unsaved {
+      color: #fab1a0;
+    }
+    .save-status.saved {
+      color: var(--success-color);
+    }
+
+    /* Modal Dialog Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 15, 25, 0.78);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+      animation: modalFadeIn 0.15s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-card {
+      background-color: var(--card-bg);
+      border: 1px solid #484869;
+      border-radius: 12px;
+      padding: 22px 18px;
+      max-width: 360px;
+      width: 100%;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .modal-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .modal-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .modal-message {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .modal-message strong {
+      color: var(--accent-color);
+    }
+
+    .modal-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .btn-save-record {
+      background-color: var(--success-color);
+      color: white;
+    }
+    .btn-save-record:hover {
+      background-color: #00997b;
+    }
+
+    .btn-discard {
+      background-color: #e17055;
+      color: white;
+    }
+    .btn-discard:hover {
+      background-color: #d63031;
+    }
+
+    .btn-cancel {
+      background-color: #4b4b66;
+      color: var(--text-main);
+    }
+    .btn-cancel:hover {
+      background-color: #3b3b55;
+    }
+
+    /* Timeline Scrubber & Edit Bar */
+    .timeline-panel {
+      background-color: var(--card-bg);
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .timeline-title {
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .timeline-offset {
+      color: #74b9ff;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .timeline-slider {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #1e1e2e;
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #74b9ff;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(116, 185, 255, 0.6);
+      transition: transform 0.1s ease;
+    }
+
+    .timeline-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .timeline-slider:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .timeline-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-scrub-play {
+      background-color: #0984e3;
+      color: white;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+    .btn-scrub-play:hover {
+      background-color: #0873c4;
+    }
+
+    .btn-open-editor {
+      background-color: #6c5ce7;
+      color: white;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+    .btn-open-editor:hover {
+      background-color: #5a4bcf;
+    }
+
+    .btn-scrub-trim {
+      background-color: #e17055;
+      color: white;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+    .btn-scrub-trim:hover {
+      background-color: #d63031;
+    }
+
+    /* Editor Drawer & Modal */
+    .editor-modal-card {
+      background-color: var(--card-bg);
+      border: 1px solid #484869;
+      border-radius: 12px;
+      padding: 16px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 90vh;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .editor-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-close-drawer {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .btn-close-drawer:hover {
+      color: var(--text-main);
+    }
+
+    .trim-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+
+    .trim-bar input[type="number"] {
+      width: 65px;
+      padding: 4px;
+      font-size: 0.78rem;
+    }
+
+    .btn-trim {
+      background-color: #e17055;
+      color: white;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      flex-shrink: 0;
+    }
+    .btn-trim:hover {
+      background-color: #d63031;
+    }
+
+    .event-search-bar {
+      width: 100%;
+    }
+
+    .event-search-bar input {
+      width: 100%;
+      background: #1e1e2e;
+      border: 1px solid #484869;
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .event-list {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 380px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .event-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      transition: background 0.15s ease;
+    }
+
+    .event-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .event-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .event-main-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .event-badge {
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-click { background: rgba(0, 184, 148, 0.25); color: #55efc4; }
+    .badge-key { background: rgba(108, 92, 231, 0.25); color: #a29bfe; }
+    .badge-move { background: rgba(99, 110, 114, 0.25); color: #dfe6e9; }
+    .badge-scroll { background: rgba(253, 203, 110, 0.25); color: #ffeaa7; }
+
+    .event-details {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .event-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-micro {
+      padding: 3px 6px;
+      font-size: 0.72rem;
+      border-radius: 4px;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #3d3d5c;
+      color: var(--text-main);
+    }
+    .btn-micro:hover {
+      background: #4d4d75;
+    }
+    .btn-micro-del {
+      background: rgba(214, 48, 49, 0.4);
+      color: #ff7675;
+    }
+    .btn-micro-del:hover {
+      background: rgba(214, 48, 49, 0.8);
+      color: white;
+    }
+
+    /* Single Event Edit Sub-Modal */
+    .edit-fields-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      font-size: 0.8rem;
+      align-items: center;
+    }
+    .edit-fields-grid input, .edit-fields-grid select {
+      width: 100%;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Lightning Macro</h1>
+    <p>Cross-Platform Mouse & Keyboard Automator</p>
+  </header>
+
+  <div id="permWarning" class="perm-warning">
+    ⚠️ <strong>macOS System Permissions Needed</strong>
+    <div class="perm-badges">
+      <span id="axBadge" class="badge missing">Accessibility: Off</span>
+      <span id="imBadge" class="badge missing">Input Monitoring: Off</span>
+    </div>
+    Enable Lightning Macro in <strong>System Settings > Privacy & Security</strong>.<br>
+    <button onclick="requestPerms()">Open Permission Prompt</button>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-top">
+      <div class="status-indicator">
+        <div id="statusDot" class="dot"></div>
+        <span id="statusText">Ready</span>
+      </div>
+      <div>Events: <span id="eventCount" class="event-count">0</span><span id="saveStatus" class="save-status"></span></div>
+    </div>
+    <div id="fileRow" class="file-row" style="display: none;">
+      <span class="file-label">File:</span>
+      <span id="fileNameDisplay" class="file-name" title=""></span>
+    </div>
+  </div>
+
+  <div class="controls-grid" id="mainControlsGrid">
+    <button id="recordBtn" class="btn-record" onclick="toggleRecord()">
+      🔴 Record
+    </button>
+    <button id="playBtn" class="btn-play" onclick="togglePlay()" disabled>
+      ▶️ Play (⌘P)
+    </button>
+    <button id="stopBtn" class="btn-stop" onclick="stopPlayback()" style="display: none;">
+      ⏹️ Stop
+    </button>
+  </div>
+
+  <!-- Timeline Scrubber & Fast Forward Panel -->
+  <div id="timelinePanel" class="timeline-panel" style="display: none;">
+    <div class="timeline-header">
+      <span class="timeline-title">⏩ Timeline / Scrub:</span>
+      <span id="scrubTimeDisplay" class="timeline-offset">0.00s / 0.00s (Event 0/0)</span>
+    </div>
+    <div class="slider-container">
+      <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="0" value="0" step="1" oninput="onTimelineInput(this.value)" onchange="onTimelineChange(this.value)">
+    </div>
+    <div class="timeline-actions">
+      <button id="btnPlayFromHere" class="btn-scrub-play" onclick="playFromCurrentScrub()" disabled>
+        ▶️ Play From Here
+      </button>
+      <button id="btnOpenEditor" class="btn-open-editor" onclick="openEditorDrawer()">
+        ✏️ Edit Macro
+      </button>
+      <button id="btnTrimBefore" class="btn-scrub-trim" onclick="promptTrimBefore()" title="Delete all events before current scrub position">
+        ✂️ Trim Before
+      </button>
+      <button id="btnTrimAfter" class="btn-scrub-trim" onclick="promptTrimAfter()" title="Delete all events after current scrub position">
+        ✂️ Trim After
+      </button>
+    </div>
+  </div>
+
+  <div class="settings-panel">
+    <div class="setting-item">
+      <label for="loopCount">Loop Repeat Count (0 = Infinite):</label>
+      <input type="number" id="loopCount" value="1" min="0" max="9999" oninput="updateTimingEstimates()" onchange="updateSettings()">
+    </div>
+
+    <div class="setting-item">
+      <label for="playbackSpeed">Speed Multiplier:</label>
+      <select id="playbackSpeed" onchange="updateSettings()">
+        <option value="0.5">0.5x (Slower)</option>
+        <option value="1.0" selected>1.0x (Normal)</option>
+        <option value="1.5">1.5x</option>
+        <option value="2.0">2.0x (Fast)</option>
+        <option value="5.0">5.0x (Ultra)</option>
+      </select>
+    </div>
+
+    <div class="timing-panel">
+      <div class="timing-item">
+        <span class="timing-label">⏱️ Loop Duration:</span>
+        <span id="loopDurationDisplay" class="timing-val">--</span>
+      </div>
+      <div class="timing-item">
+        <span class="timing-label">⏳ Estimated Total:</span>
+        <span id="totalDurationDisplay" class="timing-val">--</span>
+      </div>
+      <div class="timing-item" id="remainingRow" style="display: none;">
+        <span class="timing-label">⏳ Time Remaining:</span>
+        <span id="timeRemainingDisplay" class="timing-val">--</span>
+      </div>
+    </div>
+
+    <div class="setting-item">
+      <label class="checkbox-label">
+        <input type="checkbox" id="recordMovements" checked onchange="updateSettings()">
+        Record Mouse Movements (Drag/Hover)
+      </label>
+    </div>
+
+    <div class="setting-item">
+      <label class="checkbox-label">
+        <input type="checkbox" id="alwaysOnTop" checked onchange="updateSettings()">
+        Pin Window Always On Top
+      </label>
+    </div>
+  </div>
+
+  <div class="controls-grid">
+    <button class="btn-secondary" onclick="saveMacro()">💾 Save Macro</button>
+    <button class="btn-secondary" onclick="loadMacro()">📂 Load Macro</button>
+  </div>
+
+  <div class="hotkey-info">
+    Global Hotkey: <strong>⌘P</strong> to Play / Pause / Resume
+  </div>
+
+  <!-- Custom UI Modal for Unsaved Macro Confirmation -->
+  <div id="saveConfirmModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon">⚠️</div>
+      <h3 class="modal-title">Unsaved Macro in Memory</h3>
+      <p id="modalMessage" class="modal-message">
+        You have an unsaved macro with <strong id="unsavedCount">0</strong> events.
+        Do you want to save the current macro before starting to record another?
+      </p>
+      <div class="modal-buttons">
+        <button class="btn-save-record" onclick="handleSaveAndRecord()">💾 Save & Record</button>
+        <button class="btn-discard" onclick="handleDiscardAndRecord()">Discard & Record</button>
+        <button class="btn-cancel" onclick="closeSavePromptModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Macro Editor Drawer Modal -->
+  <div id="editorDrawerModal" class="modal-overlay" style="display: none;">
+    <div class="editor-modal-card">
+      <div class="editor-header">
+        <span class="editor-title">✏️ Macro Event Editor & Trimmer</span>
+        <button class="btn-close-drawer" onclick="closeEditorDrawer()" title="Close Editor">✕</button>
+      </div>
+
+      <!-- Quick Trim Section -->
+      <div class="trim-bar">
+        <span>Trim from event #</span>
+        <input type="number" id="trimStartInput" min="1" value="1">
+        <span>to #</span>
+        <input type="number" id="trimEndInput" min="1" value="1">
+        <button class="btn-trim" onclick="applyRangeTrim()">✂️ Trim</button>
+      </div>
+
+      <!-- Filter/Search Bar -->
+      <div class="event-search-bar">
+        <input type="text" id="eventFilterInput" placeholder="Filter events (e.g. click, key, x=100)..." oninput="renderEventList()">
+      </div>
+
+      <!-- Scrollable Event List -->
+      <div id="eventListContainer" class="event-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Event Edit Modal -->
+  <div id="singleEventModal" class="modal-overlay" style="display: none; z-index: 1100;">
+    <div class="modal-card" style="max-width: 340px;">
+      <h3 class="modal-title" id="singleEventModalTitle">Edit Event</h3>
+      <div id="singleEventFields" class="edit-fields-grid">
+        <!-- Rendered dynamically based on event type -->
+      </div>
+      <div class="modal-buttons" style="margin-top: 10px;">
+        <button class="btn-save-record" onclick="saveSingleEventEdit()">💾 Apply Changes</button>
+        <button class="btn-cancel" onclick="closeSingleEventModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trim Confirmation Modal -->
+  <div id="scrubTrimConfirmModal" class="modal-overlay" style="display: none; z-index: 1200;">
+    <div class="modal-card">
+      <div class="modal-icon">✂️</div>
+      <h3 class="modal-title" id="scrubTrimModalTitle">Confirm Macro Trim</h3>
+      <p id="scrubTrimModalMessage" class="modal-message">
+        Are you sure you want to trim this macro?
+      </p>
+      <div class="modal-buttons">
+        <button id="btnConfirmTrimAction" class="btn-discard" onclick="executePendingTrim()">✂️ Confirm Trim</button>
+        <button class="btn-cancel" onclick="closeScrubTrimModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isRecording = false;
+    let isPlaying = false;
+    let isPaused = false;
+    let baseMacroDuration = 0.0;
+
+    function formatDuration(seconds) {
+      if (!seconds || seconds <= 0) return '--';
+      if (!isFinite(seconds)) return '∞ (Infinite)';
+      if (seconds < 60) {
+        return seconds < 10 ? seconds.toFixed(1) + 's' : Math.round(seconds) + 's';
+      }
+      const totalSecs = Math.round(seconds);
+      const hrs = Math.floor(totalSecs / 3600);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = totalSecs % 60;
+      if (hrs > 0) {
+        return `${hrs}h ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+      }
+      return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+    }
+
+    function updateTimingEstimates() {
+      const loopCountInput = document.getElementById('loopCount');
+      const speedSelect = document.getElementById('playbackSpeed');
+      const loopDurationEl = document.getElementById('loopDurationDisplay');
+      const totalDurationEl = document.getElementById('totalDurationDisplay');
+
+      if (!loopDurationEl || !totalDurationEl) return;
+
+      if (!baseMacroDuration || baseMacroDuration <= 0) {
+        loopDurationEl.innerText = '--';
+        totalDurationEl.innerText = '--';
+        return;
+      }
+
+      const speed = parseFloat(speedSelect ? speedSelect.value : 1.0) || 1.0;
+      const rawVal = loopCountInput ? loopCountInput.value.trim() : '1';
+      const loopCountVal = parseInt(rawVal);
+      const loopCount = isNaN(loopCountVal) ? 1 : Math.max(0, loopCountVal);
+
+      const singleLoopSecs = baseMacroDuration / Math.max(0.1, speed);
+      loopDurationEl.innerText = formatDuration(singleLoopSecs);
+
+      if (loopCount === 0) {
+        totalDurationEl.innerText = '∞ (Infinite)';
+      } else {
+        const totalSecs = singleLoopSecs * loopCount;
+        const loopHint = loopCount > 1 ? ` (${loopCount} loops)` : '';
+        totalDurationEl.innerText = `${formatDuration(totalSecs)}${loopHint}`;
+      }
+    }
+
+    // Polling UI counter during recording
+    setInterval(() => {
+      if (isRecording && typeof pywebview !== 'undefined' && window.pywebview.api) {
+        window.pywebview.api.get_event_count().then(count => {
+          document.getElementById('eventCount').innerText = count;
+        }).catch(() => {});
+      }
+    }, 200);
+
+    // Initial check and periodic polling for accessibility permissions
+    window.addEventListener('pywebviewready', () => {
+      updateSettings();
+      checkPermissions();
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        if (window.pywebview.api.get_initial_state) {
+          window.pywebview.api.get_initial_state().then(state => {
+            if (state) {
+              baseMacroDuration = Number(state.duration) || 0.0;
+              updateUIState('idle', state.event_count, state.is_saved, state.filename, state.filepath, state.duration);
+            }
+          }).catch(() => {});
+        } else if (window.pywebview.api.get_macro_duration) {
+          window.pywebview.api.get_macro_duration().then(d => {
+            baseMacroDuration = Number(d) || 0.0;
+            updateTimingEstimates();
+          }).catch(() => {});
+        }
+      }
+      // Poll every 1.5 seconds so when user toggles permission in Settings, the banner auto-clears immediately
+      setInterval(checkPermissions, 1500);
+    });
+
+    function checkPermissions() {
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        window.pywebview.api.check_permissions().then(res => {
+          if (typeof res === 'object') {
+            const warning = document.getElementById('permWarning');
+            const axBadge = document.getElementById('axBadge');
+            const imBadge = document.getElementById('imBadge');
+
+            if (res.all_granted) {
+              warning.style.display = 'none';
+            } else {
+              warning.style.display = 'block';
+              if (axBadge) {
+                axBadge.className = 'badge ' + (res.accessibility ? 'granted' : 'missing');
+                axBadge.innerText = 'Accessibility: ' + (res.accessibility ? '✓ On' : '✗ Off');
+              }
+              if (imBadge) {
+                imBadge.className = 'badge ' + (res.input_monitoring ? 'granted' : 'missing');
+                imBadge.innerText = 'Input Monitoring: ' + (res.input_monitoring ? '✓ On' : '✗ Off');
+              }
+            }
+          } else {
+            // Boolean fallback
+            document.getElementById('permWarning').style.display = res ? 'none' : 'block';
+          }
+        }).catch(() => {});
+      }
+    }
+
+    function requestPerms() {
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        window.pywebview.api.request_permissions();
+      }
+    }
+
+    function updatePlaybackProgress(current, total, loopInfo, remainingSecs = null) {
+      const text = document.getElementById('statusText');
+      const remRow = document.getElementById('remainingRow');
+      const remVal = document.getElementById('timeRemainingDisplay');
+
+      if (remainingSecs !== null && remainingSecs !== undefined) {
+        const remStr = formatDuration(remainingSecs);
+        if (remRow && remVal) {
+          remRow.style.display = 'flex';
+          remVal.innerText = remStr;
+        }
+      }
+
+      const info = loopInfo ? ` (${loopInfo})` : '';
+      text.innerText = `Playing ${current}/${total}${info}`;
+    }
+
+    function updateUIState(state, count = 0, isSaved = false, fileName = null, filePath = null, duration = null) {
+      if (duration !== null && duration !== undefined) {
+        baseMacroDuration = Number(duration) || 0.0;
+      }
+      updateTimingEstimates();
+
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      const recordBtn = document.getElementById('recordBtn');
+      const playBtn = document.getElementById('playBtn');
+      const eventCount = document.getElementById('eventCount');
+      const saveStatus = document.getElementById('saveStatus');
+      const fileRow = document.getElementById('fileRow');
+      const fileNameDisplay = document.getElementById('fileNameDisplay');
+      const remRow = document.getElementById('remainingRow');
+      const remVal = document.getElementById('timeRemainingDisplay');
+
+      const stopBtn = document.getElementById('stopBtn');
+
+      dot.className = 'dot';
+      eventCount.innerText = count;
+
+      if (saveStatus) {
+        if (state === 'recording') {
+          saveStatus.innerText = '';
+        } else if (count > 0) {
+          saveStatus.innerText = isSaved ? ' (Saved)' : ' (Unsaved)';
+          saveStatus.className = 'save-status ' + (isSaved ? 'saved' : 'unsaved');
+        } else {
+          saveStatus.innerText = '';
+        }
+      }
+
+      if (fileRow && fileNameDisplay) {
+        if (fileName && count > 0) {
+          fileRow.style.display = 'flex';
+          fileNameDisplay.innerText = fileName;
+          fileNameDisplay.title = filePath || fileName;
+        } else {
+          fileRow.style.display = 'none';
+          fileNameDisplay.innerText = '';
+          fileNameDisplay.title = '';
+        }
+      }
+
+      const controlsGrid = document.getElementById('mainControlsGrid');
+
+      if (state === 'recording') {
+        isRecording = true;
+        isPlaying = false;
+        isPaused = false;
+        if (remRow) remRow.style.display = 'none';
+        dot.classList.add('recording');
+        text.innerText = 'Recording...';
+        recordBtn.innerText = '⏹️ Stop';
+        recordBtn.className = 'btn-stop';
+        recordBtn.disabled = false;
+        playBtn.disabled = true;
+        playBtn.innerText = '▶️ Play (⌘P)';
+        playBtn.className = 'btn-play';
+        if (stopBtn) stopBtn.style.display = 'none';
+        if (controlsGrid) controlsGrid.style.gridTemplateColumns = '1fr 1fr';
+      } else if (state === 'playing') {
+        isPlaying = true;
+        isRecording = false;
+        isPaused = false;
+        if (remRow) remRow.style.display = 'flex';
+        dot.classList.add('playing');
+        text.innerText = 'Playing Macro...';
+        playBtn.innerText = '⏸️ Pause (⌘P)';
+        playBtn.className = 'btn-pause';
+        playBtn.disabled = false;
+        recordBtn.disabled = true;
+        if (stopBtn) stopBtn.style.display = 'flex';
+        if (controlsGrid) controlsGrid.style.gridTemplateColumns = '1fr 1fr 1fr';
+      } else if (state === 'paused') {
+        isPlaying = true;
+        isRecording = false;
+        isPaused = true;
+        if (remRow) remRow.style.display = 'flex';
+        dot.classList.add('paused');
+        text.innerText = 'Paused';
+        playBtn.innerText = '▶️ Resume (⌘P)';
+        playBtn.className = 'btn-play';
+        playBtn.disabled = false;
+        recordBtn.disabled = true;
+        if (stopBtn) stopBtn.style.display = 'flex';
+        if (controlsGrid) controlsGrid.style.gridTemplateColumns = '1fr 1fr 1fr';
+      } else {
+        isRecording = false;
+        isPlaying = false;
+        isPaused = false;
+        if (remRow) remRow.style.display = 'none';
+        if (remVal) remVal.innerText = '--';
+        text.innerText = 'Ready';
+        recordBtn.innerText = '🔴 Record';
+        recordBtn.className = 'btn-record';
+        recordBtn.disabled = false;
+        playBtn.innerText = '▶️ Play (⌘P)';
+        playBtn.className = 'btn-play';
+        playBtn.disabled = count === 0;
+        if (stopBtn) stopBtn.style.display = 'none';
+        if (controlsGrid) controlsGrid.style.gridTemplateColumns = '1fr 1fr';
+      }
+
+      refreshTimelineUI(count, baseMacroDuration);
+    }
+
+    function showSavePromptModal(count, fileName = null) {
+      const modal = document.getElementById('saveConfirmModal');
+      const msgEl = document.getElementById('modalMessage');
+      const numEvents = (count !== undefined && count !== null) ? count : document.getElementById('eventCount').innerText;
+
+      if (msgEl) {
+        const filePart = fileName ? ` (from "<strong>${fileName}</strong>")` : '';
+        msgEl.innerHTML = `You have an unsaved macro${filePart} with <strong>${numEvents}</strong> events. Do you want to save the current macro before starting to record another?`;
+      }
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeSavePromptModal() {
+      const modal = document.getElementById('saveConfirmModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    function handleSaveAndRecord() {
+      closeSavePromptModal();
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        window.pywebview.api.save_and_record();
+      }
+    }
+
+    function handleDiscardAndRecord() {
+      closeSavePromptModal();
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        window.pywebview.api.discard_and_record();
+      }
+    }
+
+    // --- Scrubber & Timeline State ---
+    let currentScrubIndex = 0;
+    let currentScrubMs = 0;
+    let cachedEventsList = [];
+    let editingEventIndex = -1;
+
+    function refreshTimelineUI(eventCount, duration) {
+      const panel = document.getElementById('timelinePanel');
+      const slider = document.getElementById('timelineSlider');
+      const playFromBtn = document.getElementById('btnPlayFromHere');
+      const scrubDisplay = document.getElementById('scrubTimeDisplay');
+
+      const trimBeforeBtn = document.getElementById('btnTrimBefore');
+      const trimAfterBtn = document.getElementById('btnTrimAfter');
+
+      if (!panel || !slider || !playFromBtn) return;
+
+      if (!eventCount || eventCount <= 0) {
+        panel.style.display = 'none';
+        slider.min = 0;
+        slider.max = 0;
+        slider.value = 0;
+        currentScrubIndex = 0;
+        currentScrubMs = 0;
+        return;
+      }
+
+      panel.style.display = 'flex';
+      const totalMs = Math.round((duration || 0.0) * 1000);
+      slider.min = 0;
+      slider.max = Math.max(0, totalMs);
+      if (currentScrubMs > totalMs) {
+        currentScrubMs = 0;
+      }
+      slider.value = currentScrubMs;
+      const controlsDisabled = isRecording || isPlaying;
+      playFromBtn.disabled = controlsDisabled;
+      if (trimBeforeBtn) trimBeforeBtn.disabled = controlsDisabled || eventCount <= 1;
+      if (trimAfterBtn) trimAfterBtn.disabled = controlsDisabled || eventCount <= 1;
+
+      updateScrubDisplayByMs(currentScrubMs, eventCount, duration);
+    }
+
+    function updateScrubDisplayByMs(ms, totalEvents, duration) {
+      const scrubDisplay = document.getElementById('scrubTimeDisplay');
+      if (!scrubDisplay) return;
+
+      const dur = duration !== null && duration !== undefined ? duration : baseMacroDuration;
+      const curSec = (ms / 1000.0).toFixed(3);
+      const totalSec = Number(dur).toFixed(2);
+      const evLabel = totalEvents > 0 ? ` (Event ${currentScrubIndex + 1}/${totalEvents})` : '';
+
+      scrubDisplay.innerText = `${curSec}s / ${totalSec}s${evLabel}`;
+    }
+
+    function onTimelineInput(val) {
+      currentScrubMs = parseInt(val) || 0;
+      const total = parseInt(document.getElementById('eventCount').innerText) || 0;
+      updateScrubDisplayByMs(currentScrubMs, total, baseMacroDuration);
+
+      // Fast forward preview at exact millisecond: show ghost cursor and position
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.preview_at_millisecond) {
+        window.pywebview.api.preview_at_millisecond(currentScrubMs).then(res => {
+          if (res) {
+            currentScrubIndex = res.index;
+            updateScrubDisplayByMs(currentScrubMs, total, baseMacroDuration);
+          }
+        }).catch(() => {});
+      }
+    }
+
+    function onTimelineChange(val) {
+      currentScrubMs = parseInt(val) || 0;
+      const total = parseInt(document.getElementById('eventCount').innerText) || 0;
+      updateScrubDisplayByMs(currentScrubMs, total, baseMacroDuration);
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.preview_at_millisecond) {
+        window.pywebview.api.preview_at_millisecond(currentScrubMs).then(res => {
+          if (res) {
+            currentScrubIndex = res.index;
+            updateScrubDisplayByMs(currentScrubMs, total, baseMacroDuration);
+          }
+        }).catch(() => {});
+      }
+    }
+
+    function playFromCurrentScrub() {
+      if (isRecording || isPlaying) return;
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.start_playback_from) {
+        window.pywebview.api.start_playback_from(currentScrubIndex);
+      }
+    }
+
+    // --- Timeline Direct Trim Actions ---
+    let pendingTrimType = null; // 'before' or 'after'
+    let pendingTrimIndex = 0;
+
+    function promptTrimBefore() {
+      if (isRecording || isPlaying) return;
+      const total = parseInt(document.getElementById('eventCount').innerText) || 0;
+      if (total <= 1) return;
+
+      if (currentScrubIndex <= 0) {
+        // Nothing before event 0
+        const modal = document.getElementById('scrubTrimConfirmModal');
+        const title = document.getElementById('scrubTrimModalTitle');
+        const msg = document.getElementById('scrubTrimModalMessage');
+        const btn = document.getElementById('btnConfirmTrimAction');
+        if (modal && title && msg && btn) {
+          title.innerText = 'Cannot Trim Before';
+          msg.innerHTML = `The timeline is already at the start of the macro (Event #1). There are no preceding events to trim.`;
+          btn.style.display = 'none';
+          modal.style.display = 'flex';
+        }
+        return;
+      }
+
+      pendingTrimType = 'before';
+      pendingTrimIndex = currentScrubIndex;
+
+      const eventsToRemove = currentScrubIndex;
+      const eventsRemaining = total - currentScrubIndex;
+      const secStr = (currentScrubMs / 1000.0).toFixed(3);
+
+      const modal = document.getElementById('scrubTrimConfirmModal');
+      const title = document.getElementById('scrubTrimModalTitle');
+      const msg = document.getElementById('scrubTrimModalMessage');
+      const btn = document.getElementById('btnConfirmTrimAction');
+
+      if (modal && title && msg && btn) {
+        title.innerText = 'Trim Macro Before Current Position?';
+        msg.innerHTML = `This will permanently delete <strong>${eventsToRemove}</strong> events recorded before <strong>${secStr}s</strong> (Event #${currentScrubIndex + 1}).<br><br><strong>${eventsRemaining}</strong> events will remain, and the timeline will be re-zeroed.`;
+        btn.innerText = `✂️ Trim First ${eventsToRemove} Events`;
+        btn.style.display = 'inline-flex';
+        modal.style.display = 'flex';
+      }
+    }
+
+    function promptTrimAfter() {
+      if (isRecording || isPlaying) return;
+      const total = parseInt(document.getElementById('eventCount').innerText) || 0;
+      if (total <= 1) return;
+
+      if (currentScrubIndex >= total - 1) {
+        // Nothing after last event
+        const modal = document.getElementById('scrubTrimConfirmModal');
+        const title = document.getElementById('scrubTrimModalTitle');
+        const msg = document.getElementById('scrubTrimModalMessage');
+        const btn = document.getElementById('btnConfirmTrimAction');
+        if (modal && title && msg && btn) {
+          title.innerText = 'Cannot Trim After';
+          msg.innerHTML = `The timeline is already at the end of the macro (Event #${total}). There are no subsequent events to trim.`;
+          btn.style.display = 'none';
+          modal.style.display = 'flex';
+        }
+        return;
+      }
+
+      pendingTrimType = 'after';
+      pendingTrimIndex = currentScrubIndex;
+
+      const eventsToRemove = total - 1 - currentScrubIndex;
+      const eventsRemaining = currentScrubIndex + 1;
+      const secStr = (currentScrubMs / 1000.0).toFixed(3);
+
+      const modal = document.getElementById('scrubTrimConfirmModal');
+      const title = document.getElementById('scrubTrimModalTitle');
+      const msg = document.getElementById('scrubTrimModalMessage');
+      const btn = document.getElementById('btnConfirmTrimAction');
+
+      if (modal && title && msg && btn) {
+        title.innerText = 'Trim Macro After Current Position?';
+        msg.innerHTML = `This will permanently delete <strong>${eventsToRemove}</strong> events recorded after <strong>${secStr}s</strong> (Event #${currentScrubIndex + 1}).<br><br><strong>${eventsRemaining}</strong> events will remain.`;
+        btn.innerText = `✂️ Trim Last ${eventsToRemove} Events`;
+        btn.style.display = 'inline-flex';
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeScrubTrimModal() {
+      const modal = document.getElementById('scrubTrimConfirmModal');
+      if (modal) modal.style.display = 'none';
+      pendingTrimType = null;
+      pendingTrimIndex = 0;
+    }
+
+    function executePendingTrim() {
+      if (!pendingTrimType) return;
+      const type = pendingTrimType;
+      const idx = pendingTrimIndex;
+      closeScrubTrimModal();
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api) {
+        const apiCall = type === 'before'
+          ? window.pywebview.api.trim_before_index(idx)
+          : window.pywebview.api.trim_after_index(idx);
+
+        apiCall.then(res => {
+          if (res && res.success) {
+            currentScrubIndex = 0;
+            currentScrubMs = 0;
+            const slider = document.getElementById('timelineSlider');
+            if (slider) slider.value = 0;
+            if (window.pywebview.api.hide_ghost_cursor) {
+              window.pywebview.api.hide_ghost_cursor();
+            }
+          }
+        }).catch(err => {
+          console.error('Trim error:', err);
+        });
+      }
+    }
+
+    // --- Editor Drawer Logic ---
+    function openEditorDrawer() {
+      const modal = document.getElementById('editorDrawerModal');
+      if (modal) modal.style.display = 'flex';
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.get_events) {
+        window.pywebview.api.get_events().then(events => {
+          cachedEventsList = events || [];
+          const total = cachedEventsList.length;
+          const trimStart = document.getElementById('trimStartInput');
+          const trimEnd = document.getElementById('trimEndInput');
+          if (trimStart && trimEnd) {
+            trimStart.max = total;
+            trimEnd.max = total;
+            trimStart.value = 1;
+            trimEnd.value = total;
+          }
+          renderEventList();
+        }).catch(() => {});
+      }
+    }
+
+    function closeEditorDrawer() {
+      const modal = document.getElementById('editorDrawerModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function renderEventList() {
+      const container = document.getElementById('eventListContainer');
+      const filterInput = document.getElementById('eventFilterInput');
+      if (!container) return;
+
+      const query = filterInput ? filterInput.value.trim().toLowerCase() : '';
+      container.innerHTML = '';
+
+      if (!cachedEventsList || cachedEventsList.length === 0) {
+        container.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No events recorded</div>';
+        return;
+      }
+
+      cachedEventsList.forEach((ev, idx) => {
+        let typeBadgeClass = 'badge-move';
+        let typeLabel = ev.type;
+        let details = '';
+
+        if (ev.type === 'mouse_click') {
+          typeBadgeClass = 'badge-click';
+          typeLabel = ev.pressed ? 'Click Down' : 'Click Up';
+          details = `${ev.button} at (${ev.x}, ${ev.y})`;
+        } else if (ev.type === 'mouse_move') {
+          typeBadgeClass = 'badge-move';
+          typeLabel = 'Move';
+          details = `(${ev.x}, ${ev.y})`;
+        } else if (ev.type === 'key_press') {
+          typeBadgeClass = 'badge-key';
+          typeLabel = 'Key Down';
+          details = `${ev.key}`;
+        } else if (ev.type === 'key_release') {
+          typeBadgeClass = 'badge-key';
+          typeLabel = 'Key Up';
+          details = `${ev.key}`;
+        } else if (ev.type === 'mouse_scroll') {
+          typeBadgeClass = 'badge-scroll';
+          typeLabel = 'Scroll';
+          details = `(${ev.x}, ${ev.y}) dx=${ev.dx} dy=${ev.dy}`;
+        }
+
+        const fullSearchStr = `#${idx + 1} ${ev.type} ${typeLabel} ${details} ${ev.time}s`.toLowerCase();
+        if (query && !fullSearchStr.includes(query)) {
+          return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'event-row';
+        row.innerHTML = `
+          <div class="event-info">
+            <div class="event-main-line">
+              <strong>#${idx + 1}</strong>
+              <span class="event-badge ${typeBadgeClass}">${typeLabel}</span>
+              <span style="color: #74b9ff;">+${Number(ev.time).toFixed(3)}s</span>
+            </div>
+            <div class="event-details">${details}</div>
+          </div>
+          <div class="event-row-actions">
+            <button class="btn-micro" onclick="setScrubFromEvent(${idx})" title="Scrub cursor here">⏩ Scrub</button>
+            <button class="btn-micro" onclick="openSingleEventModal(${idx})" title="Edit event properties">✏️ Edit</button>
+            <button class="btn-micro btn-micro-del" onclick="deleteEventAt(${idx})" title="Delete this event">🗑️</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function setScrubFromEvent(idx) {
+      currentScrubIndex = idx;
+      const ev = cachedEventsList[idx];
+      const evTime = ev ? ev.time || 0.0 : 0.0;
+      currentScrubMs = Math.round(evTime * 1000);
+      const slider = document.getElementById('timelineSlider');
+      if (slider) slider.value = currentScrubMs;
+      updateScrubDisplayByMs(currentScrubMs, cachedEventsList.length, baseMacroDuration);
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.preview_at_millisecond) {
+        window.pywebview.api.preview_at_millisecond(currentScrubMs);
+      }
+      closeEditorDrawer();
+    }
+
+    function applyRangeTrim() {
+      const trimStart = parseInt(document.getElementById('trimStartInput').value) || 1;
+      const trimEnd = parseInt(document.getElementById('trimEndInput').value) || 1;
+      const sIdx = trimStart - 1;
+      const eIdx = trimEnd - 1;
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.trim_macro) {
+        window.pywebview.api.trim_macro(sIdx, eIdx).then(res => {
+          if (res && res.success) {
+            openEditorDrawer(); // Reload events
+          }
+        }).catch(() => {});
+      }
+    }
+
+    function deleteEventAt(idx) {
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.delete_single_event) {
+        window.pywebview.api.delete_single_event(idx).then(res => {
+          if (res && res.success) {
+            openEditorDrawer();
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // --- Single Event Edit Modal ---
+    function openSingleEventModal(idx) {
+      editingEventIndex = idx;
+      const ev = cachedEventsList[idx];
+      if (!ev) return;
+
+      const modal = document.getElementById('singleEventModal');
+      const title = document.getElementById('singleEventModalTitle');
+      const fields = document.getElementById('singleEventFields');
+      if (!modal || !fields) return;
+
+      title.innerText = `Edit Event #${idx + 1} (${ev.type})`;
+      let html = `
+        <label>Time (s):</label>
+        <input type="number" id="editEvTime" step="0.001" value="${ev.time !== undefined ? ev.time : 0}">
+      `;
+
+      if ('x' in ev) {
+        html += `
+          <label>X Coord:</label>
+          <input type="number" id="editEvX" value="${ev.x}">
+          <label>Y Coord:</label>
+          <input type="number" id="editEvY" value="${ev.y}">
+        `;
+      }
+      if ('button' in ev) {
+        html += `
+          <label>Button:</label>
+          <select id="editEvButton">
+            <option value="Button.left" ${ev.button.includes('left') ? 'selected' : ''}>Left</option>
+            <option value="Button.right" ${ev.button.includes('right') ? 'selected' : ''}>Right</option>
+            <option value="Button.middle" ${ev.button.includes('middle') ? 'selected' : ''}>Middle</option>
+          </select>
+          <label>Pressed:</label>
+          <select id="editEvPressed">
+            <option value="true" ${ev.pressed ? 'selected' : ''}>Down (Pressed)</option>
+            <option value="false" ${!ev.pressed ? 'selected' : ''}>Up (Released)</option>
+          </select>
+        `;
+      }
+      if ('key' in ev) {
+        html += `
+          <label>Key:</label>
+          <input type="text" id="editEvKey" value="${ev.key}">
+        `;
+      }
+
+      fields.innerHTML = html;
+      modal.style.display = 'flex';
+    }
+
+    function closeSingleEventModal() {
+      const modal = document.getElementById('singleEventModal');
+      if (modal) modal.style.display = 'none';
+      editingEventIndex = -1;
+    }
+
+    function saveSingleEventEdit() {
+      if (editingEventIndex < 0) return;
+      const timeEl = document.getElementById('editEvTime');
+      const xEl = document.getElementById('editEvX');
+      const yEl = document.getElementById('editEvY');
+      const btnEl = document.getElementById('editEvButton');
+      const pressEl = document.getElementById('editEvPressed');
+      const keyEl = document.getElementById('editEvKey');
+
+      const updated = {};
+      if (timeEl) updated.time = parseFloat(timeEl.value);
+      if (xEl) updated.x = parseInt(xEl.value);
+      if (yEl) updated.y = parseInt(yEl.value);
+      if (btnEl) updated.button = btnEl.value;
+      if (pressEl) updated.pressed = (pressEl.value === 'true');
+      if (keyEl) updated.key = keyEl.value;
+
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.update_single_event) {
+        window.pywebview.api.update_single_event(editingEventIndex, updated).then(res => {
+          if (res && res.success) {
+            closeSingleEventModal();
+            openEditorDrawer(); // Reload list
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // Modal dismiss shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeSavePromptModal();
+        closeSingleEventModal();
+        closeEditorDrawer();
+        closeScrubTrimModal();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const saveModal = document.getElementById('saveConfirmModal');
+      if (saveModal) {
+        saveModal.addEventListener('click', (e) => {
+          if (e.target === saveModal) closeSavePromptModal();
+        });
+      }
+      const drawerModal = document.getElementById('editorDrawerModal');
+      if (drawerModal) {
+        drawerModal.addEventListener('click', (e) => {
+          if (e.target === drawerModal) closeEditorDrawer();
+        });
+      }
+      const singleModal = document.getElementById('singleEventModal');
+      if (singleModal) {
+        singleModal.addEventListener('click', (e) => {
+          if (e.target === singleModal) closeSingleEventModal();
+        });
+      }
+      const trimModal = document.getElementById('scrubTrimConfirmModal');
+      if (trimModal) {
+        trimModal.addEventListener('click', (e) => {
+          if (e.target === trimModal) closeScrubTrimModal();
+        });
+      }
+    });
+
+    function toggleRecord() {
+      if (typeof pywebview !== 'undefined') {
+        window.pywebview.api.toggle_record();
+      }
+    }
+
+    function togglePlay() {
+      if (typeof pywebview !== 'undefined') {
+        window.pywebview.api.toggle_play();
+      }
+    }
+
+    function stopPlayback() {
+      if (typeof pywebview !== 'undefined' && window.pywebview.api && window.pywebview.api.stop_playback) {
+        window.pywebview.api.stop_playback();
+      }
+    }
+
+    function updateSettings() {
+      updateTimingEstimates();
+      if (typeof pywebview !== 'undefined') {
+        const loopCountInput = document.getElementById('loopCount');
+        const loopCountVal = parseInt(loopCountInput ? loopCountInput.value : 1);
+        const loopCount = isNaN(loopCountVal) ? 1 : Math.max(0, loopCountVal);
+        const speed = parseFloat(document.getElementById('playbackSpeed').value) || 1.0;
+        const recordMovements = document.getElementById('recordMovements').checked;
+        const alwaysOnTop = document.getElementById('alwaysOnTop').checked;
+        
+        window.pywebview.api.update_settings({
+          loop_count: loopCount,
+          speed: speed,
+          record_movements: recordMovements,
+          always_on_top: alwaysOnTop
+        });
+      }
+    }
+
+    function saveMacro() {
+      if (typeof pywebview !== 'undefined') {
+        window.pywebview.api.save_macro();
+      }
+    }
+
+    function loadMacro() {
+      if (typeof pywebview !== 'undefined') {
+        window.pywebview.api.load_macro();
+      }
+    }
+  </script>
+</body>
+</html>
